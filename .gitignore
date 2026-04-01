@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+adsyield.db
+.DS_Store
+uvicorn.log
+nohup.out
