@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import init_db, get_all_publishers, add_publisher, get_job_logs
 from engine import run_refresh
-import threading
 import sqlite3
 
 app = FastAPI()
@@ -63,12 +62,12 @@ def run_publisher(publisher_id: int, dry_run: bool = True):
     if not publisher:
         return {"error": "Publisher not found"}
     
-    success, failed, skipped = run_refresh(publisher, dry_run=dry_run)
+    success, failed, skipped, matched = run_refresh(publisher, dry_run=dry_run)
     
-    if success == 0 and failed == 0:
+    if matched == 0:
         return {
             "status": "no_match",
-            "message": f"Eşleşme bulunamadı. Find string'i kontrol et: {publisher['find_string']}",
+            "message": f"Eslesme bulunamadi. Find string'i kontrol et: {publisher['find_string']}",
             "success": 0,
             "failed": 0,
             "skipped": skipped
@@ -76,11 +75,12 @@ def run_publisher(publisher_id: int, dry_run: bool = True):
     
     return {
         "status": "done",
-        "success": success,
+        "success": matched if dry_run else success,
         "failed": failed,
         "skipped": skipped,
         "dry_run": dry_run
     }
+
 @app.delete("/publishers/{publisher_id}")
 def delete_publisher(publisher_id: int):
     conn = sqlite3.connect("adsyield.db")
@@ -89,6 +89,7 @@ def delete_publisher(publisher_id: int):
     conn.commit()
     conn.close()
     return {"status": "deleted"}
+
 @app.get("/logs")
 def list_logs():
     return get_job_logs(limit=200)

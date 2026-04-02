@@ -52,7 +52,7 @@ def find_matches(ad_unit, publisher_tag, find_string):
     matches = []
     for network_obj in ad_unit.get("ad_network_settings", []):
         for network_name, config in network_obj.items():
-            if network_name != "GOOGLE_AD_MANAGER_NETWORK":
+            if "GOOGLE" not in network_name:
                 continue
             for unit in config.get("ad_network_ad_units", []):
                 unit_id = unit.get("ad_network_ad_unit_id", "")
@@ -66,7 +66,7 @@ def apply_update(ad_unit, management_key, publisher_tag, find_string, replace_st
     headers = get_headers(management_key)
     for network_obj in ad_unit.get("ad_network_settings", []):
         for network_name, config in network_obj.items():
-            if network_name != "GOOGLE_AD_MANAGER_NETWORK":
+            if "GOOGLE" not in network_name:
                 continue
             for unit in config.get("ad_network_ad_units", []):
                 unit_id = unit.get("ad_network_ad_unit_id", "")
@@ -98,7 +98,7 @@ def apply_update(ad_unit, management_key, publisher_tag, find_string, replace_st
             data = r2.json()
             for network_obj in data.get("ad_network_settings", []):
                 for network_name, config in network_obj.items():
-                    if network_name != "GOOGLE_AD_MANAGER_NETWORK":
+                    if "GOOGLE" not in network_name:
                         continue
                     for unit in config.get("ad_network_ad_units", []):
                         uid = unit.get("ad_network_ad_unit_id", "")
@@ -124,11 +124,13 @@ def run_refresh(publisher, dry_run=False):
     success = 0
     failed  = 0
     skipped = 0
+    matched = 0
     for ad_unit in ad_units:
         matches = find_matches(ad_unit, tag, find_str)
         if not matches:
             skipped += 1
             continue
+        matched += len(matches)
         for old_id in matches:
             new_id = re.sub(re.escape(find_str), replace_str, old_id, count=1)
             log(f"  BULUNDU: {ad_unit['name']} ({ad_unit['id']})")
@@ -150,13 +152,4 @@ def run_refresh(publisher, dry_run=False):
             time.sleep(0.2)
     update_last_run(publisher_id)
     log(f"--- {name} bitti | {success} basarili | {failed} hatali | {skipped} atlanan ---")
-    return success, failed, skipped
-
-if __name__ == "__main__":
-    init_db()
-    publishers = get_active_publishers()
-    if not publishers:
-        log("Kayitli aktif publisher yok.")
-    else:
-        for publisher in publishers:
-            run_refresh(publisher, dry_run=False)
+    return success, failed, skipped, matched
